@@ -63,7 +63,7 @@ function createBookKey(book: Book):string {
 
   const title = book.title.trim().toLowerCase();
   const authors = book.authors
-    .map((author) => author.trim().toLowerCase())
+    .map((author: string) => author.trim().toLowerCase())
     .sort()
     .join(",");
 
