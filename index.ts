@@ -1,7 +1,7 @@
 export { BookSearchService } from "./src/core/book-search.service";
 
-export type { Book } from "./src/core/book.model";
-export type { BookSearchQuery } from "./src/core/book-search-query.model";
+export type { Book } from "./src/core/models/book.model";
+export type { BookSearchQuery } from "./src/core/models/book-search-query.model";
 export type { BookProvider } from "./src/core/book-provider";
 
 export { AppError, ValidationError, ProviderError } from "./src/core/errors";

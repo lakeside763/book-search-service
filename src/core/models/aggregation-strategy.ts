@@ -1,0 +1,1 @@
+export type AggregationStrategy = "failover" | "aggregate";

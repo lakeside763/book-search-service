@@ -24,3 +24,9 @@ export class ProviderError extends AppError {
     this.provider = provider;
   }
 }
+
+export class SearchError extends AppError {
+  constructor(message: string, public readonly cause?: unknown) {
+    super(message, "SEARCH_ERROR", cause);
+  }
+}

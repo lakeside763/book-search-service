@@ -1,6 +1,6 @@
-import { Book } from "../../core/book.model";
+import { Book } from "../../core/models/book.model";
 
-type GoogleBooksResponse = {
+export type GoogleBooksResponse = {
   items?: Array<{
     id?: string;
     volumeInfo?: {
@@ -15,22 +15,6 @@ type GoogleBooksResponse = {
     };
   }>;
 };
-
-export function mapGoogleBooksResponse(response: GoogleBooksResponse): Book[] {
-  return (response.items ?? []).map((item) => {
-    const volumeInfo = item.volumeInfo ?? {};
-
-    return {
-      id: item.id ?? `${volumeInfo.title ?? "unknown"}-google-books`,
-      title: volumeInfo.title ?? "Unknown title",
-      authors: volumeInfo.authors ?? [],
-      publisher: volumeInfo.publisher ?? "",
-      yearPublished: extractYear(volumeInfo.publishedDate) ?? 0,
-      isbn: extractIsbn(volumeInfo.industryIdentifiers) ?? "",
-      source: "google-books",
-    };
-  });
-}
 
 function extractYear(publishedDate?: string): number | undefined {
   if (!publishedDate) {
@@ -54,4 +38,43 @@ function extractIsbn(
   }
 
   return identifiers.find((entry) => entry.type === "ISBN_10")?.identifier;
+}
+
+export class GoogleBooksMapper {
+  toBooks(response: GoogleBooksResponse): Book[] {
+    return (response.items ?? [])
+      .map((item): Book | null => {
+        const volumeInfo = item.volumeInfo ?? {};
+
+        if (!volumeInfo.title) return null;
+
+        return {
+          id: `google-books:${item.id}`,
+          providerId: item.id,
+          source: 'google-books',
+          title: volumeInfo.title,
+          authors: volumeInfo.authors ?? [],
+          publisher: volumeInfo.publisher,
+          yearPublished: extractYear(volumeInfo.publishedDate),
+          isbn: extractIsbn(volumeInfo.industryIdentifiers),
+        } satisfies Book;
+      })
+      .filter((book): book is Book => book !== null);
+  }
+}
+
+export function mapGoogleBooksResponse(response: GoogleBooksResponse): Book[] {
+  return (response.items ?? []).map((item) => {
+    const volumeInfo = item.volumeInfo ?? {};
+
+    return {
+      id: item.id ?? `${volumeInfo.title ?? "unknown"}-google-books`,
+      title: volumeInfo.title ?? "Unknown title",
+      authors: volumeInfo.authors ?? [],
+      publisher: volumeInfo.publisher ?? "",
+      yearPublished: extractYear(volumeInfo.publishedDate) ?? 0,
+      isbn: extractIsbn(volumeInfo.industryIdentifiers) ?? "",
+      source: "google-books",
+    };
+  });
 }
