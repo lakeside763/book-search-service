@@ -24,11 +24,10 @@ export class OpenLibraryMapper {
       .map((doc): Book | null => {
         if (!doc.title) return null;
 
-        const providerId = doc.key ?? doc.title;
+        const id = doc.key ?? doc.title;
 
         return {
-          id: `open-library:${providerId}`,
-          providerId,
+          id,
           source: 'open-library',
           title: doc.title,
           authors: doc.author_name ?? [],

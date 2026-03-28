@@ -49,8 +49,7 @@ export class GoogleBooksMapper {
         if (!volumeInfo.title) return null;
 
         return {
-          id: `google-books:${item.id}`,
-          providerId: item.id,
+          id: `${item.id}`,
           source: 'google-books',
           title: volumeInfo.title,
           authors: volumeInfo.authors ?? [],

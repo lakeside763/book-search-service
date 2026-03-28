@@ -5,7 +5,7 @@ type CacheEntry = {
   expiresAt: number;
 }
 
-export class InMemoryCache implements SearchCache {
+export class MemoryCache implements SearchCache {
   private readonly store = new Map<string, CacheEntry>();
 
   async get(key: string): Promise<SearchResult | null> {

@@ -13,6 +13,8 @@ A small library that searches books via multiple providers (Google Books, Open L
 pnpm install
 ```
 
+Copy `.env.example` to `.env` and set `GOOGLE_BOOKS_API_KEY` if you hit Google Books rate limits (429). The example client loads `.env` via [dotenv](https://github.com/motdotla/dotenv).
+
 ## Usage
 
 ```javascript
@@ -25,11 +27,14 @@ import {
 
 const bookSearchService = new BookSearchService({
   primaryProvider: new GoogleBooksProvider(
-    new FetchHttpClient({ baseUrl: "https://www.googleapis.com/books/v1", timeoutMs: 5000 })
+    new FetchHttpClient({ baseUrl: "https://www.googleapis.com/books/v1", timeoutMs: 5000 }),
+    10,
+    process.env.GOOGLE_BOOKS_API_KEY,
   ),
   fallbackProviders: [
     new OpenLibraryProvider(
-      new FetchHttpClient({ baseUrl: "https://openlibrary.org", timeoutMs: 5000 })
+      new FetchHttpClient({ baseUrl: "https://openlibrary.org", timeoutMs: 5000 }),
+      10,
     ),
   ],
 });
