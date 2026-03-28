@@ -1,4 +1,4 @@
-import { BookSearchQuery } from "./book-search-query.model";
+import { BookSearchQuery } from "./models/book-search-query.model";
 import { ValidationError } from "./errors";
 
 export function validateBookSearchQuery(query: BookSearchQuery): void {

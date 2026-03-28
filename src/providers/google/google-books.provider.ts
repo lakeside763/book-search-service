@@ -1,55 +1,41 @@
-import { Book } from "../../core/book.model";
-import { BookSearchQuery } from "../../core/book-search-query.model";
+import { Book } from "../../core/models/book.model";
+import { BookSearchQuery } from "../../core/models/book-search-query.model";
 import { BookProvider } from "../../core/book-provider";
 import { ProviderError } from "../../core/errors";
 import { HttpClient } from "../../core/http-client";
-import { mapGoogleBooksResponse } from "./google-books.mapper";
+import { GoogleBooksMapper, type GoogleBooksResponse } from "./google-books.mapper";
 
-type GoogleBooksApiResponse = {
-  items?: Array<{
-    id?: string;
-    volumeInfo?: {
-      title?: string;
-      authors?: string[];
-      publisher?: string;
-      publishedDate?: string;
-      industryIdentifiers?: Array<{
-        type?: string;
-        identifier?: string;
-      }>;
-    };
-  }>;
-};
+function buildGoogleQuery(query: BookSearchQuery): string {
+  const parts: string[] = [];
+
+  if (query.title) parts.push(`intitle:${query.title}`);
+  if (query.author) parts.push(`inauthor:${query.author}`);
+  if (query.publisher) parts.push(`inpublisher:${query.publisher}`);
+  if (query.isbn) parts.push(`isbn:${query.isbn}`);
+  if (query.yearPublished) parts.push(String(query.yearPublished));
+
+  return parts.join(" ");
+}
 
 export class GoogleBooksProvider implements BookProvider {
   public readonly name = "google-books";
 
-  constructor(private readonly httpClient: HttpClient) {}
+  private readonly mapper = new GoogleBooksMapper();
+
+  constructor(
+    private readonly httpClient: HttpClient,
+    private readonly maxResults: number = 10,
+  ) {}
 
   async search(query: BookSearchQuery): Promise<Book[]> {
     try {
-      const response = await this.httpClient.get<GoogleBooksApiResponse>(this.buildUrl(query));
-
-      if (response.status < 200 || response.status >= 300) {
-        throw new Error(`Unexpected status code: ${response.status}`);
-      }
-
-      return mapGoogleBooksResponse(response.data);
+      const q = buildGoogleQuery(query);
+      const path = `/books/v1/volumes?q=${encodeURIComponent(q)}&maxResults=${this.maxResults}`;
+      
+      const response = await this.httpClient.get<GoogleBooksResponse>(path);
+      return this.mapper.toBooks(response);
     } catch (error) {
       throw new ProviderError(this.name, "Failed to search Google Books", error);
     }
-  }
-
-  private buildUrl(query: BookSearchQuery): string {
-    const searchTerms: string[] = [];
-
-    if (query.title) searchTerms.push(`intitle:${query.title}`);
-    if (query.author) searchTerms.push(`inauthor:${query.author}`);
-    if (query.publisher) searchTerms.push(`inpublisher:${query.publisher}`);
-    if (query.isbn) searchTerms.push(`isbn:${query.isbn}`);
-    if (query.yearPublished) searchTerms.push(String(query.yearPublished));
-
-    const q = encodeURIComponent(searchTerms.join(" "));
-    return `/volumes?q=${q}&maxResults=10`;
   }
 }

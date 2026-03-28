@@ -1,65 +1,46 @@
-export type HttpResponse<T> = {
-  status: number;
-  data: T;
-};
-
 export interface HttpClient {
-  get<T>(url: string, options?: RequestInit): Promise<HttpResponse<T>>;
+  get<T>(path: string, init?: RequestInit): Promise<T>;
 }
 
-type FetchHttpClientOptions = {
-  baseUrl: string;
-  timeoutMs?: number;
+export type FetchHttpClientOptions = {
+  baseUrl?: string;
   defaultHeaders?: Record<string, string>;
+  timeoutMs?: number;
 };
 
 export class FetchHttpClient implements HttpClient {
-  private readonly baseUrl: string;
-  private readonly timeoutMs: number;
+  private readonly baseUrl?: string;
   private readonly defaultHeaders: Record<string, string>;
+  private readonly timeoutMs: number;
 
-  constructor(options: FetchHttpClientOptions) {
-    this.baseUrl = options.baseUrl.replace(/\/+$/, "");
+  constructor(options: FetchHttpClientOptions = {}) {
+    this.baseUrl = options.baseUrl;
+    this.defaultHeaders = options.defaultHeaders ?? {};
     this.timeoutMs = options.timeoutMs ?? 5000;
-    this.defaultHeaders = options.defaultHeaders ?? {
-      Accept: "application/json",
-    };
   }
 
-  async get<T>(url: string, options?: RequestInit): Promise<HttpResponse<T>> {
+  async get<T>(path: string, init?: RequestInit): Promise<T> {
     const controller = new AbortController();
     const timeout = setTimeout(() => controller.abort(), this.timeoutMs);
 
     try {
-      const response = await fetch(`${this.baseUrl}${url}`, {
-        method: "GET",
-        ...options,
+      const url = this.baseUrl ? new URL(path, this.baseUrl).toString() : path;
+
+      const response = await fetch(url, {
+        ...init,
+        method: 'GET',
         headers: {
           ...this.defaultHeaders,
-          ...(options?.headers ?? {}),
+          ...(init?.headers ?? {}),
         },
         signal: controller.signal,
       });
 
-      const contentType = response.headers.get("content-type") ?? "";
-      let data: T;
-
-      if (contentType.includes("application/json")) {
-        data = (await response.json()) as T;
-      } else {
-        data = (await response.text()) as T;
+      if (!response.ok) {
+        throw new Error(`HTTP ${response.status} ${response.statusText}`);
       }
 
-      return {
-        status: response.status,
-        data,
-      };
-    } catch (error) {
-      if (error instanceof Error && error.name === "AbortError") {
-        throw new Error(`Request timed out after ${this.timeoutMs}ms`);
-      }
-
-      throw error;
+      return (await response.json()) as T;
     } finally {
       clearTimeout(timeout);
     }

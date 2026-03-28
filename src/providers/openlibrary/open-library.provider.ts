@@ -1,51 +1,40 @@
-import { Book } from "../../core/book.model";
-import { BookSearchQuery } from "../../core/book-search-query.model";
-import { BookProvider } from "../../core/book-provider";
-import { ProviderError } from "../../core/errors";
-import { HttpClient } from "../../core/http-client";
-import { mapOpenLibraryResponse } from "./open-library.mapper";
+import type { Book } from '../../core/models/book.model';
+import type { BookProvider } from '../../core/book-provider';
+import type { BookSearchQuery } from '../../core/models/book-search-query.model';
+import type { HttpClient } from '../../core/http-client';
+import { ProviderError } from '../../core/errors';
+import { OpenLibraryMapper, OpenLibraryResponse } from './open-library.mapper';
 
-type OpenLibraryApiResponse = {
-  docs?: Array<{
-    key?: string;
-    title?: string;
-    author_name?: string[];
-    publisher?: string[];
-    first_publish_year?: number;
-    isbn?: string[];
-  }>;
-};
+function buildOpenLibraryQuery(query: BookSearchQuery): string {
+  if (query.isbn) return `isbn:${query.isbn}`;
+
+  const parts: string[] = [];
+  if (query.title) parts.push(`title:${query.title}`);
+  if (query.author) parts.push(`author:${query.author}`);
+  if (query.publisher) parts.push(`publisher:${query.publisher}`);
+
+  return parts.join(' ');
+}
 
 export class OpenLibraryProvider implements BookProvider {
-  public readonly name = "open-library";
+  readonly name = 'open-library';
 
-  constructor(private readonly httpClient: HttpClient) {}
+  private readonly mapper = new OpenLibraryMapper();
+
+  constructor(
+    private readonly httpClient: HttpClient,
+    private readonly limit: number = 10,
+  ) {}
 
   async search(query: BookSearchQuery): Promise<Book[]> {
     try {
-      const response = await this.httpClient.get<OpenLibraryApiResponse>(this.buildUrl(query));
+      const q = buildOpenLibraryQuery(query);
+      const path = `/search.json?q=${encodeURIComponent(q)}&limit=${this.limit}`;
 
-      if (response.status < 200 || response.status >= 300) {
-        throw new Error(`Unexpected status code: ${response.status}`);
-      }
-
-      return mapOpenLibraryResponse(response.data);
+      const response = await this.httpClient.get<OpenLibraryResponse>(path);
+      return this.mapper.toBooks(response);
     } catch (error) {
-      throw new ProviderError(this.name, "Failed to search Open Library", error);
+      throw new ProviderError('Open Library search failed.', this.name, error);
     }
-  }
-
-  private buildUrl(query: BookSearchQuery): string {
-    const params = new URLSearchParams();
-
-    if (query.title) params.set("title", query.title);
-    if (query.author) params.set("author", query.author);
-    if (query.publisher) params.set("publisher", query.publisher);
-    if (query.yearPublished) params.set("first_publish_year", String(query.yearPublished));
-    if (query.isbn) params.set("isbn", query.isbn);
-
-    params.set("limit", "10");
-
-    return `/search.json?${params.toString()}`;
   }
 }
