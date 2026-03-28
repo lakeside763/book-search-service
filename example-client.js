@@ -3,6 +3,7 @@ import {
   FetchHttpClient,
   GoogleBooksProvider,
   OpenLibraryProvider,
+  InMemoryCache,
 } from "./index";
 
 async function main() {
@@ -16,12 +17,28 @@ async function main() {
     timeoutMs: 5000,
   });
 
+  const googleProvider = new GoogleBooksProvider(googleBooksHttpClient);
+  const openLibraryProvider = new OpenLibraryProvider(openLibraryHttpClient);
+
+  //  v1
   const bookSearchService = new BookSearchService({
-    primaryProvider: new GoogleBooksProvider(googleBooksHttpClient),
-    fallbackProviders: [new OpenLibraryProvider(openLibraryHttpClient)],
+    primaryProvider: googleProvider,
+    fallbackProviders: [openLibraryProvider],
   });
 
-  const books = await bookSearchService.search({
+  // v2
+  const bookSearchServiceV2 = new BookSearchService({
+    primaryProvider: googleProvider,
+    fallbackProviders: [openLibraryProvider],
+    strategy: 'aggregate',
+    maxResults: 10,
+
+    // optional cache
+    cache: new InMemoryCache(),
+    cacheTtlMs: 60000,
+  });
+
+  const books = await bookSearchServiceV2.search({
     title: "Clean Code",
     author: "Robert C. Martin",
   });

@@ -157,8 +157,8 @@ export class BookSearchService {
           return {
             provider: provider.name,
             ok: true as const,
-            books: [] as Book[],
-          }
+            books,
+          };
         } catch (error) {
           return {
             provider: provider.name,
