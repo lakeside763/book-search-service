@@ -1,6 +1,6 @@
 # Design answers (javascript-code-test)
 
-Answers to the questions from the [EDF Energy JavaScript code test](https://github.com/edfenergy-stevebowerman/javascript-code-test).
+Answers to the questions from the [JavaScript code test](https://github.com/edfenergy-stevebowerman/javascript-code-test).
 
 ---
 
