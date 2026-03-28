@@ -24,14 +24,24 @@ export class GoogleBooksProvider implements BookProvider {
 
   constructor(
     private readonly httpClient: HttpClient,
-    private readonly maxResults: number = 10,
+    private readonly maxResults: number,
+    private readonly apiKey?: string,
   ) {}
 
   async search(query: BookSearchQuery): Promise<Book[]> {
     try {
       const q = buildGoogleQuery(query);
-      const path = `/books/v1/volumes?q=${encodeURIComponent(q)}&maxResults=${this.maxResults}`;
-      
+      const params = new URLSearchParams({
+        q,
+        maxResults: String(this.maxResults),
+      });
+      const key = this.apiKey?.trim();
+      if (key) {
+        params.set("key", key);
+      }
+
+      const path = `/books/v1/volumes?${params.toString()}`;
+
       const response = await this.httpClient.get<GoogleBooksResponse>(path);
       return this.mapper.toBooks(response);
     } catch (error) {

@@ -23,7 +23,7 @@ export class OpenLibraryProvider implements BookProvider {
 
   constructor(
     private readonly httpClient: HttpClient,
-    private readonly limit: number = 10,
+    private readonly limit: number,
   ) {}
 
   async search(query: BookSearchQuery): Promise<Book[]> {
@@ -34,7 +34,7 @@ export class OpenLibraryProvider implements BookProvider {
       const response = await this.httpClient.get<OpenLibraryResponse>(path);
       return this.mapper.toBooks(response);
     } catch (error) {
-      throw new ProviderError('Open Library search failed.', this.name, error);
+      throw new ProviderError(this.name, "Failed to search Open Library", error);
     }
   }
 }

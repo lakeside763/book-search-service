@@ -1,37 +1,70 @@
 # Book Search Service
 
-A small library that searches books via multiple providers (Google Books, Open Library) through a single interface. Uses a primary provider with optional fallbacks.
+TypeScript library that searches books through **Google Books** and **Open Library** behind one `BookSearchService`. Supports **failover** (try primary, then fallbacks) or **aggregate** (query all providers and merge/dedupe).
 
-**Things you will be asked about** (adding providers, handling different API payloads, query types, testing): see [DESIGN.md](./DESIGN.md).
+Interview-style design notes: [DESIGN.md](./DESIGN.md).
 
-## Setup
+## Requirements
 
-- **Node.js** 18+
-- **pnpm**
+- Node.js 18+
+- pnpm
 
 ```bash
 pnpm install
 ```
 
+## Environment
+
+Copy [.env.example](./.env.example) to `.env`. Set `GOOGLE_BOOKS_API_KEY` if you see HTTP 429 from Google ([Books API key](https://developers.google.com/books/docs/v1/using#APIKey)).
+
+The example loads `.env` with [dotenv](https://github.com/motdotla/dotenv) (`import "dotenv/config"`).
+
+## Run the example
+
+```bash
+pnpm start
+```
+
+Uses **tsx** so TypeScript sources run without a build. Use `pnpm start` rather than `node example-client.js` directly (Node does not execute `index.ts`).
+
 ## Usage
 
 ```javascript
+import "dotenv/config";
+
 import {
   BookSearchService,
   FetchHttpClient,
   GoogleBooksProvider,
   OpenLibraryProvider,
+  MemoryCache,
 } from "./index";
 
+const pageSize = 10;
+
+const googleProvider = new GoogleBooksProvider(
+  new FetchHttpClient({
+    baseUrl: "https://www.googleapis.com/books/v1",
+    timeoutMs: 5000,
+  }),
+  pageSize,
+  process.env.GOOGLE_BOOKS_API_KEY,
+);
+
+const openLibraryProvider = new OpenLibraryProvider(
+  new FetchHttpClient({ baseUrl: "https://openlibrary.org", timeoutMs: 5000 }),
+  pageSize,
+);
+
 const bookSearchService = new BookSearchService({
-  primaryProvider: new GoogleBooksProvider(
-    new FetchHttpClient({ baseUrl: "https://www.googleapis.com/books/v1", timeoutMs: 5000 })
-  ),
-  fallbackProviders: [
-    new OpenLibraryProvider(
-      new FetchHttpClient({ baseUrl: "https://openlibrary.org", timeoutMs: 5000 })
-    ),
-  ],
+  primaryProvider: googleProvider,
+  fallbackProviders: [openLibraryProvider],
+  strategy: "failover", // or "aggregate"
+  maxResults: pageSize,
+
+  // Optional: omit `cache` to always hit providers
+  // cache: new MemoryCache(),
+  // cacheTtlMs: 60_000,
 });
 
 const books = await bookSearchService.search({
@@ -40,51 +73,61 @@ const books = await bookSearchService.search({
 });
 ```
 
-Run the example:
+- **`search(query)`** → `Promise<Book[]>` (normalized books only).
+- **`searchDetailed(query)`** → `Promise<SearchResult>` with `{ books, meta }` (e.g. `meta.cacheHit`, `providersSucceeded` / `providersFailed`).
 
-```bash
-pnpm start
+### Strategies
+
+| `strategy`   | Behavior |
+|-------------|----------|
+| `failover` (default) | Primary first; if it errors or returns no books, try each fallback in order. |
+| `aggregate` | All listed providers in parallel; combine results, dedupe, then `slice` to `maxResults`. |
+
+### Cache
+
+- Implement `SearchCache` (`get` / `set`) or use **`MemoryCache`** (in-memory, **this process only**).
+- If `cache` is omitted, `BookSearchService` skips reads/writes (`this.cache?.get` / `this.cache?.set`).
+- Cache keys include query fields, `strategy`, and `maxResults`. A second identical call in the **same** process can set `meta.cacheHit: true` when using `searchDetailed`.
+
+### Provider constructors
+
+- `GoogleBooksProvider(httpClient, maxResults = 10, apiKey?)` — `apiKey` is appended as Google's `key` query param.
+- `OpenLibraryProvider(httpClient, limit = 10)` — `limit` is sent to Open Library's search API.
+
+`maxResults` on the service caps the **final** list after dedupe; provider limits control **per-request** API page size (often keep them aligned via one `pageSize` constant).
+
+## Project layout
+
 ```
-
-## Project structure
-
-```
-core/
-  book.model.ts           # Book type
-  book-search-query.model.ts
-  book-search.service.ts  # Orchestrates search, primary + fallbacks
-  book-provider.ts        # Provider interface
+src/core/
+  book-search.service.ts
+  book-provider.ts
   query-validator.ts
-  errors.ts
+  deduplication.service.ts
   http-client.ts
+  errors.ts
+  memory-cache.ts
+  models/          # Book, queries, options, SearchResult, etc.
 
-providers/
-  google/   google-books.provider.ts, google-books.mapper.ts
-  openlibrary/   open-library.provider.ts, open-library.mapper.ts
+src/providers/
+  google/
+  openlibrary/
 
-index.ts                  # Public API
+index.ts           # public exports
 example-client.js
 ```
 
-Import only from `index.ts`; do not rely on internal paths.
-
-## How search works
-
-1. The **primary provider** is called first.
-2. If it returns results, those are returned (after deduplication).
-3. If it fails or returns no results, **fallback providers** are tried in order.
-4. If all fail, the last error is thrown; if all return empty, an empty array is returned.
-
-## Adding a provider
-
-1. Implement the `BookProvider` interface (`name`, `search(query)`).
-2. Use the shared `HttpClient` (or your own) to call the external API.
-3. Map the API response to the `Book` type (e.g. in a mapper).
-4. Register the provider as primary or in `fallbackProviders` when building `BookSearchService`.
+Import from **`index.ts`** (or `"./index"` in the repo root); avoid deep imports into `src/`.
 
 ## Scripts
 
-| Command        | Description        |
-|----------------|--------------------|
-| `pnpm start`   | Run example client |
-| `pnpm run typecheck` | Type-check with `tsc --noEmit` |
+| Command | Description |
+|--------|-------------|
+| `pnpm start` | Run `example-client.js` with tsx |
+| `pnpm run typecheck` | `tsc --noEmit` |
+
+## Adding another provider
+
+1. Implement `BookProvider` (`name`, `search(query): Promise<Book[]>`).
+2. Map API JSON to the shared `Book` type (mapper next to the provider).
+3. Pass the instance as `primaryProvider`, `fallbackProviders`, and/or `providers` (for custom aggregate lists).

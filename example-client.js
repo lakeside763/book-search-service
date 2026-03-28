@@ -1,9 +1,11 @@
+import "dotenv/config";
+
 import {
   BookSearchService,
   FetchHttpClient,
   GoogleBooksProvider,
   OpenLibraryProvider,
-  InMemoryCache,
+  MemoryCache,
 } from "./index";
 
 async function main() {
@@ -17,32 +19,30 @@ async function main() {
     timeoutMs: 5000,
   });
 
-  const googleProvider = new GoogleBooksProvider(googleBooksHttpClient);
-  const openLibraryProvider = new OpenLibraryProvider(openLibraryHttpClient);
+  /** Per-request page size for each API; service caps merged/deduped results to the same value. */
+  const pageSize = 10;
 
-  //  v1
+  const googleProvider = new GoogleBooksProvider(
+    googleBooksHttpClient,
+    pageSize,
+    process.env.GOOGLE_BOOKS_API_KEY,
+  );
+  const openLibraryProvider = new OpenLibraryProvider(openLibraryHttpClient, pageSize);
+
   const bookSearchService = new BookSearchService({
     primaryProvider: googleProvider,
     fallbackProviders: [openLibraryProvider],
-  });
-
-  // v2
-  const bookSearchServiceV2 = new BookSearchService({
-    primaryProvider: googleProvider,
-    fallbackProviders: [openLibraryProvider],
     strategy: 'aggregate',
-    maxResults: 10,
+    maxResults: pageSize,
 
     // optional cache
-    cache: new InMemoryCache(),
+    cache: new MemoryCache(),
     cacheTtlMs: 60000,
   });
 
-  const books = await bookSearchServiceV2.search({
-    title: "Clean Code",
-    author: "Robert C. Martin",
-  });
+  const query = { author: "Robert C. Martin" };
 
+  const books = await bookSearchService.search(query);
   console.log(JSON.stringify(books, null, 2));
 }
 
