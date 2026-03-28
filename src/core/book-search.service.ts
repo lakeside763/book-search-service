@@ -11,9 +11,14 @@ function normalizeQueryValue(value?: string): string {
   return (value ?? "").trim().toLowerCase().replace(/\s+/g, " ");
 }
 
-function buildCacheKey(query: BookSearchQuery, strategy: 'failover' | 'aggregate'): string {
+function buildCacheKey(
+  query: BookSearchQuery,
+  strategy: "failover" | "aggregate",
+  maxResults: number,
+): string {
   return JSON.stringify({
     strategy,
+    maxResults,
     title: normalizeQueryValue(query.title),
     author: normalizeQueryValue(query.author),
     publisher: normalizeQueryValue(query.publisher),
@@ -45,11 +50,10 @@ export class BookSearchService {
   async searchDetailed(query: BookSearchQuery): Promise<SearchResult> {
     validateBookSearchQuery(query);
 
-    const cacheKey = buildCacheKey(query, this.strategy);
+    const cacheKey = buildCacheKey(query, this.strategy, this.maxResults);
     const cached = await this.cache?.get(cacheKey);
 
     if (cached) {
-      console.log('cache hit', cacheKey);
       return {
         ...cached,
         meta: {
@@ -164,6 +168,8 @@ export class BookSearchService {
         }
       })
     );
+
+    // console.log('results', results);
 
     const providersSucceeded = results
       .filter((result) => result.ok)

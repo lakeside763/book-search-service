@@ -17,12 +17,12 @@ export class MemoryCache implements SearchCache {
       return null;
     }
 
-    return entry.value;
+    return structuredClone(entry.value);
   }
 
   async set(key: string, value: SearchResult, ttlMs: number = 60_000): Promise<void> {
     this.store.set(key, {
-      value,
+      value: structuredClone(value),
       expiresAt: Date.now() + ttlMs,
     });
   }
