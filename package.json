@@ -5,11 +5,17 @@
   "packageManager": "pnpm@9.0.0",
   "scripts": {
     "start": "tsx example-client.js",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "test:unit": "vitest run tests/unit",
+    "test:integration": "vitest run tests/integration"
   },
   "devDependencies": {
+    "@types/node": "^25.5.0",
     "dotenv": "^17.3.1",
     "tsx": "^4.0.0",
-    "typescript": "^5.0.0"
+    "typescript": "^5.0.0",
+    "vitest": "^4.1.2"
   }
 }
