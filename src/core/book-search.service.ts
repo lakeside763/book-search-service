@@ -42,9 +42,9 @@ export class BookSearchService {
     this.cache = options.cache;
   }
 
-  async search(query: BookSearchQuery): Promise<Book[]> {
+  async search(query: BookSearchQuery): Promise<SearchResult> {
     const result = await this.searchDetailed(query);
-    return result.books;
+    return result;
   }
 
   async searchDetailed(query: BookSearchQuery): Promise<SearchResult> {
@@ -129,7 +129,8 @@ export class BookSearchService {
             })
           }
         }
-      } catch (error) {
+      } catch (error: any) {
+        console.log(`[provider failed] ${provider.name}:`, error.message);
         providersFailed.push(provider.name)
       }
     }

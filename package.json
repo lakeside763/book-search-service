@@ -1,19 +1,30 @@
 {
   "name": "book-search",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "type": "module",
   "packageManager": "pnpm@9.0.0",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    }
+  },
+  "files": ["dist", "README.md"],
   "scripts": {
     "start": "tsx example-client.js",
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
     "test:watch": "vitest",
     "test:unit": "vitest run tests/unit",
-    "test:integration": "vitest run tests/integration"
+    "test:integration": "vitest run tests/integration",
+    "build": "tsup"
   },
   "devDependencies": {
     "@types/node": "^25.5.0",
     "dotenv": "^17.3.1",
+    "tsup": "^8.5.1",
     "tsx": "^4.0.0",
     "typescript": "^5.0.0",
     "vitest": "^4.1.2"

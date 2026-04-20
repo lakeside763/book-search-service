@@ -2,7 +2,6 @@
 
 TypeScript library that searches books through **Google Books** and **Open Library** behind one `BookSearchService`. Supports **failover** (try primary, then fallbacks) or **aggregate** (query all providers and merge/dedupe).
 
-Interview design notes: [DESIGN.md](./DESIGN.md).
 
 ## Requirements
 

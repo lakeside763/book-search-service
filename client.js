@@ -30,9 +30,9 @@ async function main() {
   const openLibraryProvider = new OpenLibraryProvider(openLibraryHttpClient, pageSize);
 
   const bookSearchService = new BookSearchService({
-    primaryProvider: googleProvider,
-    fallbackProviders: [openLibraryProvider],
-    strategy: 'aggregate',
+    primaryProvider: openLibraryProvider,
+    fallbackProviders: [googleProvider],
+    strategy: 'failover',
     maxResults: pageSize,
 
     // optional cache
@@ -40,7 +40,9 @@ async function main() {
     cacheTtlMs: 60000,
   });
 
-  const query = { author: "Robert C. Martin" };
+  const query = {
+    title: "clean code",
+  };
 
   const books = await bookSearchService.search(query);
   console.log(JSON.stringify(books, null, 2));
